@@ -1,12 +1,9 @@
 const User = require('../models/userModel.js');
 const { pool } = require('../config/db.js');
-const { Mutex } = require('async-mutex');
-const mutex = new Mutex();
 
 class UserService {
     static async createUsersTable() {
         let client;
-        const release = await mutex.acquire();
         try {
             client = await pool.connect();
             await client.query('BEGIN');
@@ -32,11 +29,9 @@ class UserService {
             if (client) {
                 client.release();
             }
-            release();
         }
     }
     static async updateBalance(userId, amount) {
-        const release = await mutex.acquire();
         if (typeof userId !== 'number' || typeof amount !== 'number') {
             throw new Error('Некорректные параметры.');
         }
@@ -67,8 +62,9 @@ class UserService {
             await client.query('ROLLBACK');
             return "Ошибка сервера: " + error.message;
         } finally {
-            client.release();
-            release();
+            if (client) {
+                client.release();
+            }
         }
     }
 }
